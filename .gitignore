@@ -1,0 +1,64 @@
+.env
+.venv/
+__pycache__/
+.pytest_cache/
+node_modules/
+.next/
+data/
+*.db
+.test-deps/
+*.tsbuildinfo
+.test-tmp/
+.test-tmp-final/
+acceptance-media/
+
+# Secrets and credentials (keep only reviewed examples)
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+credentials*.json
+secrets*.json
+
+# Database snapshots and local database files
+*.sqlite
+*.sqlite3
+*.dump
+*.backup
+*.sql
+backups/
+
+# Source media and generated audio/video
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.wav
+*.mp3
+*.flac
+*.m4a
+media/
+
+# Model weights and runtime caches
+models/
+model-cache/
+.cache/
+.huggingface/
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.onnx
+*.bin
+
+# Additional local environments and build outputs
+venv/
+env/
+*.pyc
+*.pyo
+coverage/
+htmlcov/
+dist/
+build/

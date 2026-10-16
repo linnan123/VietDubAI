@@ -1,0 +1,46 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: vietdub
+      POSTGRES_USER: vietdub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U vietdub]
+      interval: 5s
+      retries: 10
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      retries: 10
+  api:
+    build: ./backend
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    environment: &backend_env
+      DATABASE_URL: postgresql+psycopg://vietdub:${POSTGRES_PASSWORD}@postgres/vietdub
+      REDIS_URL: redis://redis:6379/0
+      MEDIA_ROOT: /data
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+    volumes: [media_data:/data]
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  worker:
+    build: ./backend
+    command: celery -A app.tasks.celery worker --loglevel=info --concurrency=2 --beat
+    environment: *backend_env
+    volumes: [media_data:/data]
+    depends_on:
+      api: {condition: service_started}
+      redis: {condition: service_healthy}
+  web:
+    build: ./frontend
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [api]
+volumes:
+  postgres_data:
+  media_data:

@@ -1,0 +1,58 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: vietdub_acceptance_15
+      POSTGRES_USER: acceptance15
+      POSTGRES_PASSWORD: ${ACCEPTANCE_DB_PASSWORD:?Required acceptance-only password}
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U acceptance15 -d vietdub_acceptance_15]
+      interval: 2s
+      retries: 30
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 2s
+      retries: 30
+  api:
+    image: vietdubai-api:latest
+    command: [python, /acceptance/entry.py, api]
+    environment: &environment
+      DATABASE_URL: postgresql+psycopg://acceptance15:${ACCEPTANCE_DB_PASSWORD}@postgres/vietdub_acceptance_15
+      REDIS_URL: redis://redis:6379/15
+      MEDIA_ROOT: /acceptance-media
+      CORS_ORIGINS: http://localhost:13000
+      PYTHONPATH: /code:/acceptance
+    volumes: &mounts
+      - type: bind
+        source: ${ACCEPTANCE_MEDIA_PATH:?Required new acceptance-only directory}
+        target: /acceptance-media
+      - type: bind
+        source: ./entry.py
+        target: /acceptance/entry.py
+        read_only: true
+    ports: ["127.0.0.1:18000:8000"]
+    networks: [default, ingress]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  worker:
+    image: vietdubai-worker:latest
+    command: [python, /acceptance/entry.py, worker]
+    environment: *environment
+    volumes: *mounts
+    depends_on:
+      api: {condition: service_started}
+  web:
+    image: vietdub-acceptance15-web:upload-fix
+    ports: ["127.0.0.1:13000:3000"]
+    networks: [ingress]
+    depends_on: [api]
+volumes:
+  postgres_data:
+networks:
+  default:
+    internal: true
+  ingress: {}
